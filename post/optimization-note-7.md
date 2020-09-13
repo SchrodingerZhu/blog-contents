@@ -291,3 +291,166 @@ $$
 &= -\frac{1}{\lambda} \|d\|^2
 \end{aligned}
 $$
+
+#### Steps
+
+Since the divergence is guaranteed in this way, we can reuse similar techniques like backtracking to generate step sizes
+
+We cam use $\|\mathcal P_\Omega(x_k - \lambda_k\nabla f(x_k)) - x_k\| \le \varepsilon$ as stopping criterion. At each step"
+
+- calculate $d_k = \mathcal P_\Omega(x_k - \lambda_k \nabla f(x_k)) - x_k$
+- if $\|d_k\| \le  \lambda_k \varepsilon$, then STOP  and $x_k$ is the output.
+- Armijo Line Search
+- Update to $x_{k + 1}$
+
+### Convergence
+
+$f$ is cont. diff., $\Omega$ is nonempty, convex, and closed and the step sizes $(\lambda_k)_k$ are bounded:
+$$
+0 > \underline \lambda \le \lambda_k \le \overline \lambda, \forall k
+$$
+Every accumulation point of $(x_k)$ is a stationary point.
+
+If $\nabla f$ is additionally Lipschitz continuous, we obtain:
+
+- If $f$ is convex, we converge to global solutions of the problem.
+- If $\lambda_k \le \frac{2(1 - \gamma)}{L}$, then $\alpha_k = 1$ will be accepted as step size!
+- If $f$ is (strongly) convex, then $(x^k)_k$ converges linearly o a global solution $x^\ast \in \Omega$
+
+## Integer Programming
+
+### Theorem:  LP Relaxation as a Bound for IP
+
+1. For a maximization problem, the optimal value of the LP relaxation provides an upper bound for the optimal value of the IP.
+2. For a minimization problem, the optimal value of the LP relaxation provides a lower bound for the optimal value of the IP.
+
+The difference between the optimal value of the LP and the IP is called the integrability gap.
+
+- For maximization problems, the integrality gap is $v^\text{LP} - v^\text{IP}$
+- For maximization problems, the integrality gap is $v^\text{IP} - v^\text{LP}$
+
+**Maximization Problem:** Suppose we solved the LP relaxation and  obtain the optimal value is $v^\text{LP}$ (with some fractional solution)
+
+Then we round the solution to a feasible integer point and find the objective value is $v^\text{Rounding}$.
+
+Then the difference between the rounded solution and the optimal integer solution (whose objective value is $v^{IP}$) satisfies:
+$$
+0 \le v^\text{IP } - v^\text{Rounding} \le v^{LP} -v^\text{Rounding}
+$$
+That is, one can use the LP relaxation solution to construct abound on how good a certain feasible integer point is.
+
+### Theorem: The Ideal Case
+
+If the optimal solution to the LP relaxation is integer, then the solution must be optimal to the IP problem.
+
+### Total Unimodularity
+
+#### Definition
+
+A matrix $A$ is said to be totally unimodular if the determinant of each submatrix of $A$ is either $0$, $1$, or $-1$.
+
+#### Theorem:  Total Unimodularity and Integer Solutions
+
+If the constraint matrix $A$ is totally unimodular and $b$ is an integer vector, then all the BFS are integers and the LP relaxation must have an optimal solution that is an integer solution
+
+#### One Sufficient Condition for TU
+
+Let $A$ be an $m \times n$ matrix. Then the following conditions together are sufficient for $A$ to be totally unimodular:
+
+1. Every column of $A$ contains at most two non-zero entries;
+2. Every entry in $A$ is 0,+1, or 1;
+3. The rows of $A$ can be partitioned into two disjoint sets $B$ and $C$ such that
+   - If two non-zero entries in a column of $A$ have the same sign, then the row of one entry is in $B$, and the row of the other in $C$;
+   - If two non-zero entries in a column of $A$ have opposite signs, then the rows are both in $B$, or both in $C$.
+
+#### Example
+
+The matching problem:
+$$
+\begin{aligned}
+\max & \sum_{i = 1}^n\sum_{j = 1}^nv_{ij}x_{ij}\\
+s.t. & \sum_{i = 1}^n x_{ij} = 1, \forall j \\
+& \sum_{j = 1}^n x_{ij} = 1, \forall i \\
+& x_{ij} \in \{0, 1\}
+\end{aligned}
+$$
+The constraint matrix is TU.
+
+### Branch and Bound Algorithm
+
+We consider solving a maximization problem. The whole procedure is
+
+1. Solve the LP relaxation.
+   - If the optimal solution is integral, then it is optimal to IP.
+   - Otherwise go to step 2.
+2. If the optimal solution to the LP relaxation is $x^\ast$ and $x^\ast$ is fractional, then branch the problem into the following two:
+   - One with an added constraint that $x_i \le \lfloor x_i^\ast \rfloor$
+   - One with an added constraint that $x_i \ge \lceil x_i^\ast \rceil$
+
+3. For each of the two problems, use the same method to solve them, and get optimal sol $y_1^\ast$ and $y_2^\ast$  
+
+For each of the two problems, use the same method to solvethem, and get optimal sol.y⇤1andy⇤2with optimal $v_1^\ast$ and $v_2^\ast$. Compare to obtain the optimal solution.
+
+With bounding:
+
+- Any LP relaxation solution can provide an upper bound for each node in the branching process.
+
+- Any feasible point to the IP can provide a lower bound for the entire problem.
+
+When the optimal value of the LP relaxation of this branch is less than the current lower bound, then we can discard this branch.
+
+- No better solution can be obtained from further exploring this branch.
+
+#### Remark
+
+We usually prefer to use DFS since it will discover more integer solution at the early stage.
+
+#### Program
+
+```python
+import cvxpy as cp
+def branch_and_bound(obj, cons, vars, eps=1e-4):
+    current_opt = None
+    current_sol = None
+    visited = set()
+    def _branch_and_bound(_obj, _cons):
+    	prob = cp.Problem(_obj, _cons)
+    	opt = prob.solve()
+    	if prob.status != 'infeasible' and (current_opt is None or opt >= current_opt):
+        	new_cons = []
+        	for i in range(len(_vars)):
+            	v = vars[i].value
+            	ceil = math.ceil(v)
+            	floor = math.floor(v)
+                if ceil - v > eps and v - floor > eps:
+                    new_cons.append(((vars[i] <= floor, (i, floor, False)), (vars[i] >= ceil, (i, ceil, True))))
+            sol = [i.value[0] for i in vars]
+            if not new_cons:
+                if current_opt is None:
+                    current_opt = opt
+                    current_sol = sol
+                elif opt > current_opt:
+                    current_opt = max(opt, current_opt)
+                    current_sol = sol;
+            else:
+                for i in new_cons:
+                    if i[0][1] not in visited:
+                        visited.add(i[0][1])
+                     	_branch_and_bound(obj, [*cons, i[0][0]], vars)
+						visited.remove(i[0][1])
+                    if i[1][1] not in visited:
+                        visited.add(i[1][1])
+                     	_branch_and_bound(obj, [*cons, i[1][0]], vars)
+						visited.remove(i[1][1])
+    _branch_and_bound(obj, cons)
+    return current_opt, current_sol
+```
+
+#### Complexity
+
+There is no polynomial algorithm for IP, but branch and bounding is good enough to solve a large range of IP problems.
+
+
+
+
+
