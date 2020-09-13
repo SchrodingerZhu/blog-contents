@@ -407,7 +407,7 @@ y_i(a_i^\top x - b_i) = 0, & \forall i \\
 x_j(A_j^\top y - c_j) = 0, & \forall j
 \end{cases}
 $$
-This also gives us another proof of $ y = (A_B^{-1})^\top c_B$ under the standard form with $x_i \gt 0, \forall i \in B$, because in this case, we always have
+This also gives us another proof of $y = (A_B^{-1})^\top c_B$ under the standard form with $x_i \gt 0, \forall i \in B$, because in this case, we always have
 $$
 A_i^\top y = c_i, \forall i \in B
 $$
